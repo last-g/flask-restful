@@ -86,6 +86,16 @@ class APIWithBlueprintTestCase(unittest.TestCase):
         with app.test_request_context('/bp/hi'):
             self.assertEquals(request.endpoint, 'test.hello')
 
+    def test_url_with_blueprint_prefix_deferred_init(self):
+        api = flask_restful.Api()
+        api.add_resource(HelloWorld, '/hi')
+
+        blueprint = Blueprint('test', __name__, url_prefix='/bp')
+        api.init_app(blueprint)
+        app = Flask(__name__)
+        app.register_blueprint(blueprint)
+        with app.test_request_context('/bp/hi'):
+            self.assertEqual(request.endpoint, 'test.helloworld')
 
     def test_url_with_registration_prefix(self):
         blueprint = Blueprint('test', __name__)
@@ -141,6 +151,41 @@ class APIWithBlueprintTestCase(unittest.TestCase):
             api._should_use_fr_error_handler = Mock(return_value=False)
             assert_true(api._has_fr_route())
 
+    def test_error_routing_deferred_init(self):
+        app = Flask(__name__)
+
+        blueprint = Blueprint('test', __name__)
+        api = flask_restful.Api()
+        api.add_resource(HelloWorld, '/hi')
+        api.add_resource(GoodbyeWorld(404), '/bye', endpoint="bye")
+        api.init_app(blueprint)
+        app.register_blueprint(blueprint)
+
+        blueprint_other = Blueprint('other', __name__)
+        api_other = flask_restful.Api()
+        api_other.add_resource(HelloWorld, '/other')
+        api_other.add_resource(GoodbyeWorld(404), '/other', endpoint="bye")
+        api_other.init_app(blueprint_other)
+        app.register_blueprint(blueprint_other)
+
+
+        with app.test_request_context('/hi', method='POST'):
+            assert_true(api._should_use_fr_error_handler())
+            assert_true(api._has_fr_route())
+            assert_false(api_other._should_use_fr_error_handler())
+            assert_false(api_other._has_fr_route())
+
+        with app.test_request_context('/bye'):
+            api._should_use_fr_error_handler = Mock(return_value=False)
+            assert_true(api._has_fr_route())
+            assert_false(api_other._should_use_fr_error_handler())
+            assert_false(api_other._has_fr_route())
+
+        with app.test_request_context('/non_existent'):
+            assert_false(api._should_use_fr_error_handler())
+            assert_false(api._has_fr_route())
+            assert_false(api_other._should_use_fr_error_handler())
+            assert_false(api_other._has_fr_route())
 
     def test_non_blueprint_rest_error_routing(self):
         blueprint = Blueprint('test', __name__)
