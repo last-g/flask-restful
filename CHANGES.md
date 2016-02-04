@@ -3,6 +3,14 @@ Flask-RESTful Changelog
 
 Here you can see the full list of changes between each Flask-RESTful release.
 
+Version 0.2.13
+--------------
+
+Released February 5, 2016
+
+- Fixed a bug in blueprint deferred initialization that causes bugs in routing ([#177](https://github.com/twilio/flask-restful/pull/177)).
+
+
 Version 0.2.12
 --------------
 
